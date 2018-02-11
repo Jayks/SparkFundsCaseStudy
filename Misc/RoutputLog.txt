@@ -1,0 +1,68 @@
+Unique companies present in rounds2:
+ 66368
+Unique companies present in companies:
+ 66368
+No. of Observations in master_frame:
+ 114949
+Are there any companies in the rounds2 file  which are not present in companies?
+ No
+Average funding amount of venture/angel/seed/private equity:
+# A tibble: 4 x 2
+    Funding_Type Avg_Investment_Amount
+           <chr>                 <dbl>
+1          angel              958694.5
+2 private_equity            73308593.0
+3           seed              719818.0
+4        venture            11748949.1
+The most suitable investment type: 
+[1] "venture"
+Top nine countries based on the total investment amount each country has received:
+# A tibble: 9 x 2
+  country   investment
+    <chr>        <dbl>
+1     USA 422510842796
+2     CHN  39835418773
+3     GBR  20245627416
+4     IND  14391858718
+5     CAN   9583332317
+6     FRA   7259536732
+7     ISR   6907514579
+8     DEU   6346959822
+9     JPN   3363676611
+Top 3 Countries for investment: 
+[1] "USA" "GBR" "IND"
+Total number of investments - 
+ USA : 12149 GBR : 628 IND : 330
+Total amount of investment -  USA : 108521860586 GBR : 5436843539 IND : 2976543602
+Sector No. 1 (based on count of investments) -
+ USA : Others 
+ GBR : Others 
+ IND : Others
+Sector No. 2 (based on count of investments) -
+ USA : Social..Finance..Analytics..Advertising 
+ GBR : Social..Finance..Analytics..Advertising 
+ IND : Social..Finance..Analytics..Advertising
+Sector No. 3 (based on count of investments) -
+ USA : Cleantech...Semiconductors 
+ GBR : Cleantech...Semiconductors 
+ IND : News..Search.and.Messaging
+Number of investments in the Sector No. 1 (count-wise) -
+ USA : 2950 
+ GBR : 147 
+ IND : 110
+Number of investments in the Sector No. 2 (count-wise) -
+ USA : 2714 
+ GBR : 133 
+ IND : 60
+Number of investments in the Sector No. 3 (count-wise) -
+ USA : 2350 
+ GBR : 130 
+ IND : 52
+The company which received the highest investment in top sector count-wise:
+ USA : Virtustream 
+ GBR : Electric Cloud 
+ IND : FirstCry.com
+The company which received the highest investment  in second-best sector count-wise:
+ USA : SST Inc. (Formerly ShotSpotter) 
+ GBR : Celltick Technologies 
+ IND : Manthan Systems

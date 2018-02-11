@@ -1,0 +1,348 @@
+###############################################################################
+## Project        : Spark Funds Investment Case Study
+## Script purpose : To identify top optimal investment areas for Spark funds 
+##                  asset management company based on various parameters 
+##                  like Funding type, top Countries, top Sectors etc...
+## Date           : 4-Feb-2018
+## Version        : 1.0
+## Author(s)      : Chaithanya Reddy , Poovarasan Murugesan
+##                  Pranesh Ramaiya  , Jayakumar Sekar
+###############################################################################
+
+#setwd("D:\\Case Study\\input")
+
+#Include the required libraries
+library(tidyr)
+library(dplyr)
+library(stringr)
+
+#-----------------------------------------------------------------------------#
+#                     Checkpoint 1: Data Cleaning                             #
+#-----------------------------------------------------------------------------#
+
+# Load the companies and rounds data into two data frames and
+#  name them companies and rounds2 respectively.
+companies <- read.delim("companies.txt", stringsAsFactors = F)
+rounds2   <- read.csv("rounds2.csv ", stringsAsFactors = F)
+
+#checks
+#str(companies)
+#str(rounds2)
+#head(companies)
+#head(rounds2)
+
+# Change the keys permalink to lower case so that both the the dataframes
+#  can be merged using the permalink primary key
+#  companies<- mutate(companies,permalink = tolower(permalink))
+companies$permalink       <- str_to_lower(companies$permalink)
+rounds2$company_permalink <- str_to_lower(rounds2$company_permalink)
+
+# How many unique companies are present in rounds2?
+writeLines(paste("Unique companies present in rounds2:\n",
+                 length(unique(rounds2$company_permalink))))
+
+# How many unique companies are present in companies?
+writeLines(paste("Unique companies present in companies:\n",
+                 length(unique(companies$permalink))))
+
+# Merge the two data frames so that all variables in the companies frame
+#  are added to the rounds2 data frame.#Name the merged frame master_frame.
+master.frame <- merge(rounds2, companies,by.x = "company_permalink",
+                      by.y = "permalink")
+
+# checks#
+#  head(master.frame)
+#  str(master.frame)
+
+# How many observations are present in master_frame?
+writeLines(paste("No. of Observations in master_frame:\n",
+                 nrow(master.frame)))
+
+# Are there any companies in the rounds2 file which are not present in 
+#  companies? Answer yes or no
+if (length(setdiff(master.frame$company_permalink, 
+                   companies$permalink)) == 0) {
+  Ans = "No"
+}else{
+  Ans = "Yes"
+}
+
+writeLines(paste("Are there any companies in the rounds2 file ",
+                 "which are not present in companies?\n",
+                 Ans))
+
+# Additional Cleanup:
+# The companies that are closed can be filtered out from the master.frame
+#  as there is no point in analysing to invest in the Closed Companies
+#  summary(as.factor(master.frame$status))
+#  master.frame <- filter(master.frame, status!= 'closed')
+
+# The above step commented as the end results didn't make 
+#  any difference after removing the closed companies
+
+#-----------------------------------------------------------------------------#
+#                     Checkpoint 2 - Funding Type Analysis                    #
+#-----------------------------------------------------------------------------#
+
+
+# Group by funding type on average investment amount
+inv.by.fndtyp  <- master.frame %>%
+  group_by(funding_round_type) %>%
+  summarise(mean(raised_amount_usd,na.rm = T)) %>%
+  setNames(c("Funding_Type", "Avg_Investment_Amount"))
+
+writeLines("Average funding amount of venture/angel/seed/private equity:")
+print(filter(inv.by.fndtyp, Funding_Type == 'venture' | 
+               Funding_Type == 'angel' | Funding_Type == 'seed' | 
+               Funding_Type == 'private_equity'))
+
+
+# Considering that Spark Funds wants to invest between 5 to 15 million USD 
+#  per investment round,which investment type is the most suitable for it?
+writeLines("The most suitable investment type: ")
+print((inv.by.fndtyp  %>% 
+         filter(Avg_Investment_Amount >= 5000000 & 
+                  Avg_Investment_Amount <= 15000000))$Funding_Type)
+
+
+#-----------------------------------------------------------------------------#
+#                     Checkpoint 3: Country Analysis                          #
+#-----------------------------------------------------------------------------#
+
+# 1.Filter funding type as 'Venture' since that is the most suitable 
+#   investment type for Spark funds.
+#   Additional Clean up: Filter out the countries that do not have any values
+# 2.Group by country on total investment amount
+inv.by.cntry <- master.frame %>%
+  filter(funding_round_type == 'venture' & country_code != "") %>%
+  group_by(country_code) %>%
+  summarise(sum(raised_amount_usd,na.rm = T)) %>%
+  setNames(c("country", "investment")) %>%
+  arrange(desc(investment))
+
+top9 <- head((inv.by.cntry), 9)
+writeLines(paste("Top nine countries based on the total investment amount",
+                 "each country has received:"))
+print(top9)
+
+#English speaking Countries
+Eng.Speaking.Countries <-
+            c("BWA", "CMR", "ETH",  "ERI", "GMB", "GHA", "KEN", "LSO",
+              "LBR", "MWI", "MUS",  "NAM", "NGA", "RWA", "SYC", "SLE", 
+              "ZAF", "SSD", "SDN",  "SWZ", "TZA", "UGA", "ZMB", "ZWE",
+              "ATG", "BHS", "BRB",  "BLZ", "CAN", "DMA", "GRD", "GUY",
+              "JAM", "KNA", "LCA",  "VCT", "TTO", "USA", 
+              "IND", "PAK",  "PHL", "SGP", 
+              "AUS", "FJI", "KIR",  "MHL", "FSM", "NRU",  "NZL", "PLW", 
+              "PNG", "WSM", "SLB", "TON",  "TUV", "VUT", 
+              "IRL", "MLT", "GBR")
+
+top3.Countries <- intersect(top9$country, Eng.Speaking.Countries)[1:3]
+
+first.cntry  <- top3.Countries[1]
+second.cntry <- top3.Countries[2]
+third.cntry  <- top3.Countries[3]
+
+writeLines("Top 3 Countries for investment: ")
+print(top3.Countries)
+
+
+
+#-----------------------------------------------------------------------------#
+#                        Checkpoint 4: Sector Analysis 1                      #
+#-----------------------------------------------------------------------------#
+
+# Merged data frame with each primary sector mapped to its main sector
+# Load the mapping data from excel into data frame
+cat.sect.wide <- read.csv("mapping.csv", stringsAsFactors = F)
+
+# convert wide format columns into long format (category,sector)
+cat.sect.long <- cat.sect.wide %>%
+  gather(category, sector, 
+         "Automotive...Sports":"Social..Finance..Analytics..Advertising") %>%
+  filter(!(sector == 0)) %>%   #Omit the rows with 0 values in the sector 
+  select(c(-3)) %>%       #Omit the last column with all 1's from the 
+                          # data frame as it is no longer needed. 
+  setNames(c("category", "sector"))
+
+# split out column category_list in master_frame into primary and secondary
+#  use escape sequence \\ to escape '|' symbol
+cat.split <- master.frame %>%
+  separate(category_list, into = c("primary", "secondary"), "\\|",
+           extra = "drop", fill = "right") 
+             
+
+# Merge the data frames master_frame_separated and category_long
+master.frame.with.sect <- merge(cat.split, cat.sect.long, 
+                                by.x = "primary", by.y = "category")
+
+# checks
+# checks if there are any rows that are dropped when master_frame_with_sector
+#  is created From category_separated
+writeLines(paste("There are", nrow(cat.split) - nrow(master.frame.with.sect),
+                 "records dropped when sectors were added and merged"))
+
+# check for any categories that got dropped due to mismatch between 
+#  category DF in long format and master_frame DF with categories separated
+mismatch.drops <- length(setdiff(cat.sect.long$category, 
+                                 master.frame.with.sect$primary))
+
+# Finding out why there was a mismatch
+setdiff(cat.sect.long$category, master.frame.with.sect$primary)
+
+# By looking at the result we could see that there are some categories like
+# 'Energy Ma0gement', '0notechnology' and so on which did not match 
+#  because of the pattern '0' instead of 'na'. This needs a cleanup
+cat.sect.long$category <- str_replace_all(cat.sect.long$category, 
+                                          pattern = "0","na")
+
+# One category 'Enterprise 2.0' gets replaced with '2.na'. 
+#  The second replace statement ensures it is restored back to its 
+#  original value 'Enterprise 2.0'.
+
+cat.sect.long$category <- str_replace_all(cat.sect.long$category, 
+                                          pattern = "\\.na",".0")
+
+
+# Since we added "na" (some in the front, some in the middle of the columns),
+#  inorder to make it uniform, let's convert category columns to Title case 
+#  in both the DFs so that they match
+cat.sect.long$category <- str_to_title(cat.sect.long$category)
+cat.split$primary      <- str_to_title(cat.split$primary)
+
+# Merge the data frames master_frame_separated and category_long again
+master.frame.with.sect <- merge(cat.split, cat.sect.long, 
+                                by.x = "primary", by.y = "category")
+
+# check for the records that were dropped
+mismatch.drops <- length(setdiff(cat.sect.long$category, 
+                                 master.frame.with.sect$primary))
+
+# Since mismatch drops is 0, all matched records from sector 
+#  mapping file is now added to master_frame_with_sector. 
+#  Now we are good to go to the next step.
+
+# check
+# head(master_frame_with_sector)
+# tail(master_frame_with_sector)
+
+
+#-----------------------------------------------------------------------------#
+#                    Checkpoint 5: Sector Analysis 2                          #
+#-----------------------------------------------------------------------------#
+
+
+# Create three separate data frames D1, D2 and D3 for each of the 3 countries 
+#  containing the observations of funding type FT falling within the 
+#  5-15 million USD range. 
+# The three data frames should contain:
+#  *All the columns of the master_frame along with the primary sector and the 
+#    main sector
+#  *Total number (or count) of investments for each main sector in a separate 
+#    column
+#  *The total amount invested in each main sector in a separate column
+master.frame.prfrd <- master.frame.with.sect %>%
+  filter(funding_round_type == 'venture' &
+           raised_amount_usd >= 5000000 & raised_amount_usd <= 15000000)
+
+
+D1 <- filter(master.frame.prfrd, country_code == first.cntry)
+D2 <- filter(master.frame.prfrd, country_code == second.cntry)
+D3 <- filter(master.frame.prfrd, country_code == third.cntry)
+
+# Function to group by individual DFs by sectors based on investment
+GroupBySect <- function(df){
+  return(df %>% group_by(sector) %>% 
+    summarize(count = n(),sum(raised_amount_usd,na.rm = T)) %>% 
+    setNames(c('sector', 'count', 'amount')) %>% 
+    arrange(desc(count),desc(amount)))
+}
+
+# Call above function to group the individual DFs by sectors on investment
+D1.inv.by.sect <- GroupBySect(D1)
+D2.inv.by.sect <- GroupBySect(D2)
+D3.inv.by.sect <- GroupBySect(D3)
+
+# Merge the aggregated values with the master frame based on Sectors
+D1 <- merge(D1, D1.inv.by.sect, by = "sector")
+D2 <- merge(D2, D2.inv.by.sect, by = "sector")
+D3 <- merge(D3, D3.inv.by.sect, by = "sector")
+
+#checks
+#head(D1)
+#head(D2)
+#head(D3)
+
+# Total number of investments (count)
+writeLines(paste("Total number of investments - \n",
+                 first.cntry,":", sum(D1.inv.by.sect$count),
+                 second.cntry,":", sum(D2.inv.by.sect$count),
+                 third.cntry,":", sum(D3.inv.by.sect$count)))
+
+# Total amount of investment (USD)
+writeLines(paste("Total amount of investment - ",
+                 first.cntry,":", sum(D1.inv.by.sect$amount),
+                 second.cntry,":", sum(D2.inv.by.sect$amount),
+                 third.cntry,":", sum(D3.inv.by.sect$amount)))
+
+# Top Sectors based on Count
+Print.Top.Sectors <- function(rank){
+  writeLines(paste("Sector No.",rank,"(based on count of investments) -\n",
+                   first.cntry,":", D1.inv.by.sect$sector[rank],"\n",
+                   second.cntry,":", D2.inv.by.sect$sector[rank],"\n",
+                   third.cntry,":", D3.inv.by.sect$sector[rank]))
+}
+
+Print.Top.Sectors(1)
+Print.Top.Sectors(2)
+Print.Top.Sectors(3)
+
+# Number of investments in the top sectors
+Print.Top.Sectors.Count <- function(rank){
+  writeLines(paste("Number of investments in the Sector No.",rank,
+                   "(count-wise) -\n",
+                   first.cntry,":", D1.inv.by.sect$count[rank],"\n",
+                   second.cntry,":", D2.inv.by.sect$count[rank],"\n",
+                   third.cntry,":", D3.inv.by.sect$count[rank]))
+}
+
+Print.Top.Sectors.Count(1)
+Print.Top.Sectors.Count(2)
+Print.Top.Sectors.Count(3)
+
+# Function to group by individual DFs by comapny names based on sectors & 
+#  investment
+GroupByComp <- function(df, sectdf, rank){
+  return(df %>%
+           filter(sector == sectdf$sector[rank]) %>%
+           group_by(name) %>%
+           summarise(sum(raised_amount_usd, na.rm = T)) %>%
+           setNames(c("Name", "Investment_Amount")) %>%
+           arrange(desc(Investment_Amount)))
+}
+
+# For the top sector count-wise, 
+#  which company received the highest investment?
+D1.inv.sect1.by.comp <- GroupByComp(D1, D1.inv.by.sect, 1)
+D2.inv.sect1.by.comp <- GroupByComp(D2, D2.inv.by.sect, 1)
+D3.inv.sect1.by.comp <- GroupByComp(D3, D3.inv.by.sect, 1)
+
+writeLines(paste("The company which received the highest investment",
+                 "in top sector count-wise:\n",
+                 first.cntry,":", D1.inv.sect1.by.comp$Name[1],"\n",
+                 second.cntry,":", D2.inv.sect1.by.comp$Name[1],"\n",
+                 third.cntry,":", D3.inv.sect1.by.comp$Name[1]))
+
+# For the second-best sector count-wise,
+#  which company received the highest investment?
+D1.inv.sect2.by.comp <- GroupByComp(D1, D1.inv.by.sect, 2)
+D2.inv.sect2.by.comp <- GroupByComp(D2, D2.inv.by.sect, 2)
+D3.inv.sect2.by.comp <- GroupByComp(D3, D3.inv.by.sect, 2)
+
+writeLines(paste("The company which received the highest investment ",
+                    "in second-best sector count-wise:\n",
+                 first.cntry,":", D1.inv.sect2.by.comp$Name[1],"\n",
+                 second.cntry,":", D2.inv.sect2.by.comp$Name[1],"\n",
+                 third.cntry,":", D3.inv.sect2.by.comp$Name[1]))
+
+#*************************End of file*****************************************#
